@@ -11,6 +11,9 @@ import type { GitHubData } from './utils/githubApi';
 import { analyzeProfileWithGemini, recommendJobsWithGemini } from './utils/geminiApi';
 import type { AIAnalysisResult, JobRecommendation } from './utils/geminiApi';
 
+/**
+ * Interface representing a floating background particle.
+ */
 interface Particle {
   id: number;
   top: string;
@@ -19,18 +22,27 @@ interface Particle {
   delay: string;
 }
 
+/**
+ * Main Application Component.
+ * Orchestrates the dashboard states, API calls, and layout rendering.
+ */
 function App() {
+  // State variables for application data
   const [githubData, setGithubData] = useState<GitHubData | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
   const [jobRecommendations, setJobRecommendations] = useState<JobRecommendation[] | null>(null);
+  
+  // Loading and error states
   const [isJobsLoading, setIsJobsLoading] = useState(false);
   const [jobsError, setJobsError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // UI states
   const [shareCopied, setShareCopied] = useState(false);
   const [particles, setParticles] = useState<Particle[]>([]);
 
-  // Generate star particles on mount
+  // Effect 1: Generate star particles on component mount for the background animation
   useEffect(() => {
     const list: Particle[] = [];
     for (let i = 0; i < 40; i++) {
@@ -45,7 +57,7 @@ function App() {
     setParticles(list);
   }, []);
 
-  // Parse URL query parameter on mount for sharing functionality
+  // Effect 2: Parse URL query parameters on mount to support sharing (e.g., ?u=username)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sharedUsername = params.get('u');
@@ -54,6 +66,11 @@ function App() {
     }
   }, []);
 
+  /**
+   * Search Orchestrator.
+   * 1. Fetches raw profile/repo data from GitHub.
+   * 2. Calls Gemini AI model to perform the cognitive developer analysis.
+   */
   const handleSearch = async (username: string) => {
     setIsLoading(true);
     setError(null);
@@ -62,16 +79,16 @@ function App() {
     setJobRecommendations(null);
     setJobsError(null);
 
-    // Update URL query parameter
+    // Update URL query parameters so the current profile search state is shareable
     const newUrl = `${window.location.origin}${window.location.pathname}?u=${encodeURIComponent(username)}`;
     window.history.pushState({ path: newUrl }, '', newUrl);
 
     try {
-      // 1. Fetch GitHub data
+      // Step A: Fetch full developer dataset from GitHub
       const data = await fetchGitHubData(username);
       setGithubData(data);
 
-      // 2. Fetch Gemini AI data
+      // Step B: Fetch profile analysis from Google Gemini
       const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (!geminiKey) {
         throw new Error(
@@ -87,6 +104,10 @@ function App() {
     }
   };
 
+  /**
+   * Job Recommendations Trigger.
+   * Invoked on-demand when the user clicks the "Recommend Jobs" button.
+   */
   const handleFetchJobRecommendations = async () => {
     if (!githubData) return;
     setIsJobsLoading(true);
@@ -109,6 +130,10 @@ function App() {
     }
   };
 
+  /**
+   * Share Button Handler.
+   * Copies the current shareable profile link to the user's clipboard.
+   */
   const handleShare = () => {
     if (!githubData) return;
     const shareUrl = `${window.location.origin}${window.location.pathname}?u=${encodeURIComponent(
@@ -120,7 +145,7 @@ function App() {
     });
   };
 
-  // Find the top repo from the repos list
+  // Find the top-scored original repository
   const topRepo = githubData?.repos
     ? [...githubData.repos].sort((a, b) => b.stars - a.stars)[0] || null
     : null;
@@ -128,7 +153,7 @@ function App() {
   return (
     <div className="min-height-screen relative z-10 scanlines overflow-hidden pb-16">
       
-      {/* Particle Background */}
+      {/* Background Star Particles */}
       <div className="star-particles">
         {particles.map((p) => (
           <div
@@ -147,7 +172,7 @@ function App() {
 
       <div className="max-w-6xl mx-auto px-4 md:px-6 relative z-10">
         
-        {/* Hero Header */}
+        {/* Dashboard Header */}
         <header className="text-center pt-16 pb-8 animate-fade-in">
           <h1 className="text-4xl md:text-6xl font-rajdhani font-extrabold tracking-widest text-white uppercase mb-2">
             Git<span className="text-cyber-neon neon-text-green">Analyze</span>
@@ -159,10 +184,9 @@ function App() {
           <SearchBar onSearch={handleSearch} isLoading={isLoading} />
         </header>
 
-        {/* Error Message Box */}
+        {/* Error message card */}
         {error && (
           <div className="glass-card max-w-2xl mx-auto border-2 border-cyber-pink/50 p-6 rounded-lg text-left my-6 relative animate-fade-in">
-            {/* Cyberpunk hazard line */}
             <div className="absolute top-0 bottom-0 left-0 w-2 bg-cyber-pink"></div>
             <h4 className="text-lg font-rajdhani font-bold text-cyber-pink uppercase mb-1">
               SYSTEM ERROR: DECODING_FAILED
@@ -173,7 +197,7 @@ function App() {
           </div>
         )}
 
-        {/* Loading Skeletons */}
+        {/* Dashboard Loading State Skeletons */}
         {isLoading && (
           <div className="w-full flex flex-col gap-6 animate-pulse max-w-5xl mx-auto">
             {/* ProfileCard Skeleton */}
@@ -198,14 +222,14 @@ function App() {
           </div>
         )}
 
-        {/* Loaded Results Display */}
+        {/* Main Dashboard Panels */}
         {githubData && (
           <main className="max-w-5xl mx-auto flex flex-col gap-8">
             
-            {/* Profile Overview Card */}
+            {/* 1. Profile Summary Card */}
             <ProfileCard profile={githubData.profile} />
 
-            {/* Stats Grid */}
+            {/* 2. Repository Numerical Stats Grid */}
             <StatsGrid
               publicReposCount={githubData.profile.publicReposCount}
               totalStars={githubData.totalStars}
@@ -213,16 +237,15 @@ function App() {
               mostUsedLanguage={githubData.languages[0]?.language || ''}
             />
 
-            {/* Language chart if distribution is available */}
+            {/* 3. Language Usage Percentage Distribution Chart */}
             {githubData.languages.length > 0 && (
               <LanguageChart languages={githubData.languages} />
             )}
 
-            {/* AI Analysis Dossier from Gemini */}
+            {/* 4. AI Recruiter Dossier Panel */}
             {aiAnalysis ? (
               <AIAnalysis analysis={aiAnalysis} />
             ) : (
-              // AI Loading skeleton
               <div className="glass-card border-2 border-cyber-purple/20 p-6 md:p-8 rounded-xl flex flex-col gap-4 animate-pulse">
                 <div className="h-6 bg-white/15 w-64 rounded"></div>
                 <div className="h-4 bg-white/10 w-full rounded"></div>
@@ -238,7 +261,7 @@ function App() {
               </div>
             )}
 
-            {/* AI Job Recommendations Section */}
+            {/* 5. Career Matchmaking Recommendations */}
             {aiAnalysis && (
               <div className="w-full my-8 relative z-10 animate-fade-in text-left">
                 {!jobRecommendations && !isJobsLoading && (
@@ -297,10 +320,10 @@ function App() {
               </div>
             )}
 
-            {/* Top Repos Showcase */}
+            {/* 6. Repository List Showcase */}
             <RepoCards repos={githubData.repos} />
 
-            {/* Share Dossier Section */}
+            {/* 7. Share Dossier Action Bar */}
             <section className="flex flex-col items-center justify-center py-8">
               <button
                 onClick={handleShare}
@@ -322,3 +345,4 @@ function App() {
 }
 
 export default App;
+

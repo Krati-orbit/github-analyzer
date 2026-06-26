@@ -1,18 +1,35 @@
+/**
+ * Gemini API utility module for the GitAnalyze application.
+ * 
+ * WORKFLOW:
+ * 1. receives sanitized profile and repository data from githubApi.ts.
+ * 2. prepares summaries of repositories, languages, and recent activities.
+ * 3. constructs a detailed, role-based prompt specifying strict JSON output formats.
+ * 4. invokes the Google Gemini API (gemini-3.1-flash-lite) with the prompt.
+ * 5. parses and validates the returned JSON response and returns it to App.tsx.
+ */
+
 import type { GitHubData } from './githubApi';
 
+/**
+ * Interface representing a tailored job recommendation produced by Gemini AI.
+ */
 export interface JobRecommendation {
-  role: string;
-  companyType: string;
-  matchPercentage: number;
-  whyYouMatch: string;
-  keySkills: string[];
+  role: string;             // Specific career role (e.g., Frontend Developer, DevOps Engineer)
+  companyType: string;      // Recommended company profile (e.g., AI Startup, Enterprise FinTech)
+  matchPercentage: number;  // Matching score (50-100) based on repository complexity
+  whyYouMatch: string;      // Detailed explanation referencing languages, stars, or contributions
+  keySkills: string[];      // Array of 3-5 specific skills demonstrated in their GitHub profile
 }
 
+/**
+ * Interface representing the detailed profile analysis produced by Gemini AI.
+ */
 export interface AIAnalysisResult {
-  summary: string;
-  strengths: string[];
-  improvements: string[];
-  bestProject: {
+  summary: string;          // Insightful recruiter-style summary of the developer's profile
+  strengths: string[];      // 3 technical/workflow strengths identified in the code
+  improvements: string[];   // 3 recommendations for profile/codebase improvement
+  bestProject: {            // Breakdown of the developer's highest-scored repository
     name: string;
     score: number;
     isPersonalOrCollaborative: string;
@@ -21,40 +38,50 @@ export interface AIAnalysisResult {
     problemSolved: string;
     whyBest: string;
   };
-  careerSuggestion: string;
-  motivation: string;
+  careerSuggestion: string; // Tailored long-term career path suggestion
+  motivation: string;       // Unique, encouraging motivational quote
 }
 
+/**
+ * Analyzes the parsed GitHub profile, repos, and activity data using Gemini AI.
+ * 
+ * @param githubData The unified data fetched from GitHub API
+ * @param apiKey Google Gemini API Key
+ * @returns AIAnalysisResult containing summary, strengths, improvements, best project details, and motivation
+ */
 export async function analyzeProfileWithGemini(
   githubData: GitHubData,
   apiKey: string
 ): Promise<AIAnalysisResult> {
+  // Validate that the Gemini API Key is present
   if (!apiKey || apiKey.trim() === '') {
     throw new Error('Gemini API key is missing or empty. Please check your .env file.');
   }
 
-  // Model selection: we'll use gemini-3.1-flash-lite to avoid quota limits
+  // Target model: gemini-3.1-flash-lite (fast, light, and cost-effective)
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
 
-  // Find the repo with the highest score (or sort repos by score)
+  // Step 2.1: Sort original repositories by algorithmic score to identify the "best" project
   const sortedReposByScore = [...githubData.repos]
     .filter(r => !r.isFork)
     .sort((a, b) => (b.score || 0) - (a.score || 0));
   
   const bestRepo = sortedReposByScore[0] || null;
 
-  // Prepare input summaries for the LLM. Prioritize ORIGINAL repositories, then sort by stars descending.
+  // Step 2.2: Prepare a summarized list of repositories, prioritizing original work
   const sortedRepos = [...githubData.repos].sort((a, b) => {
     if (a.isFork !== b.isFork) {
       return a.isFork ? 1 : -1;
     }
     return b.stars - a.stars;
   });
+  
   const reposSummary = sortedRepos
     .map(r => `- ${r.name} (${r.isFork ? 'FORK' : 'ORIGINAL'}): ${r.description || 'No description'} (Stars: ${r.stars}, Forks: ${r.forks}, Language: ${r.language || 'N/A'}, Algorithmic Score: ${r.score || 0})`)
-    .slice(0, 30) // Limit to top 30 repos to keep request size reasonable
+    .slice(0, 30) // Cap at 30 repositories to control context length
     .join('\n');
 
+  // Step 2.3: Build detailed metadata for the developer's best repository
   const bestRepoDetails = bestRepo ? `
 BEST PROJECT DETAIL FOR ANALYSIS:
 - Name: ${bestRepo.name}
@@ -68,14 +95,17 @@ BEST PROJECT DETAIL FOR ANALYSIS:
 ${githubData.bestRepoReadme || 'No README content available'}
 ` : '';
 
+  // Step 2.4: Summarize language usage percentages
   const languagesSummary = githubData.languages
     .map(l => `- ${l.language}: ${l.percentage}%`)
     .join('\n');
 
+  // Step 2.5: Summarize recent GitHub commits/events activity
   const activitiesSummary = githubData.recentActivity
     .map(a => `- [${new Date(a.createdAt).toLocaleDateString()}] ${a.description}`)
     .join('\n');
 
+  // Step 2.6: Construct the prompt for the recruiter persona
   const prompt = `
 You are a highly experienced elite technical recruiter and AI career coach. Analyze the following GitHub developer profile data and generate a JSON response representing the developer's profile analysis.
 
@@ -135,6 +165,7 @@ SCHEMA:
 `;
 
   try {
+    // Step 2.7: Make the HTTP POST request to the Gemini API endpoint
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -151,6 +182,7 @@ SCHEMA:
           },
         ],
         generationConfig: {
+          // Tell the Gemini model to output strictly structured JSON
           responseMimeType: 'application/json',
         },
       }),
@@ -167,9 +199,10 @@ SCHEMA:
       throw new Error('Empty response received from Gemini API');
     }
 
+    // Step 2.8: Parse the JSON string from the response
     const parsedResult: AIAnalysisResult = JSON.parse(text.trim());
 
-    // Validate fields exist
+    // Basic structure validation
     if (!parsedResult.summary || !Array.isArray(parsedResult.strengths) || !Array.isArray(parsedResult.improvements)) {
       throw new Error('Invalid JSON format returned from Gemini');
     }
@@ -181,35 +214,48 @@ SCHEMA:
   }
 }
 
+/**
+ * Recommends 3 specific career job roles using Gemini AI based on developer profile and repositories.
+ * 
+ * @param githubData The unified data fetched from GitHub API
+ * @param apiKey Google Gemini API Key
+ * @returns Array of exactly 3 JobRecommendation objects
+ */
 export async function recommendJobsWithGemini(
   githubData: GitHubData,
   apiKey: string
 ): Promise<JobRecommendation[]> {
+  // Validate that the Gemini API Key is present
   if (!apiKey || apiKey.trim() === '') {
     throw new Error('Gemini API key is missing or empty. Please check your .env file.');
   }
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
 
+  // Step 3.1: Sort repositories to showcase the best original works first
   const sortedRepos = [...githubData.repos].sort((a, b) => {
     if (a.isFork !== b.isFork) {
       return a.isFork ? 1 : -1;
     }
     return b.stars - a.stars;
   });
+  
   const reposSummary = sortedRepos
     .map(r => `- ${r.name} (${r.isFork ? 'FORK' : 'ORIGINAL'}): ${r.description || 'No description'} (Stars: ${r.stars}, Forks: ${r.forks}, Language: ${r.language || 'N/A'})`)
     .slice(0, 30)
     .join('\n');
 
+  // Step 3.2: Language percentages summary
   const languagesSummary = githubData.languages
     .map(l => `- ${l.language}: ${l.percentage}%`)
     .join('\n');
 
+  // Step 3.3: Activity history summary
   const activitiesSummary = githubData.recentActivity
     .map(a => `- [${new Date(a.createdAt).toLocaleDateString()}] ${a.description}`)
     .join('\n');
 
+  // Step 3.4: Construct the prompt for career matchmaking
   const prompt = `
 You are a highly experienced elite technical recruiter and AI career coach. Analyze the following GitHub developer profile data and generate exactly 3 highly suitable, premium job recommendations tailored specifically to their demonstrated skills, technology stack, project complexity, and contribution history.
 
@@ -257,6 +303,7 @@ SCHEMA:
 `;
 
   try {
+    // Step 3.5: Execute the fetch call
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -301,3 +348,4 @@ SCHEMA:
     throw new Error(`Job recommendation failed: ${error.message || error}`);
   }
 }
+
