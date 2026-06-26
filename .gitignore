@@ -1,0 +1,8 @@
+# Ignore env files
+github/.env
+github/.env.local
+github/.env.*.local
+
+# Ignore package directories
+github/node_modules/
+github/dist/
