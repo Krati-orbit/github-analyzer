@@ -1,21 +1,127 @@
 import React from 'react';
-import type { AIAnalysisResult } from '../utils/geminiApi';
+import type { AIAnalysisResult, JobRecommendation } from '../utils/geminiApi';
 
 interface AIAnalysisProps {
   analysis: AIAnalysisResult;
+  username?: string;
+  jobRecommendations?: JobRecommendation[] | null;
 }
 
-export const AIAnalysis: React.FC<AIAnalysisProps> = ({ analysis }) => {
+export const AIAnalysis: React.FC<AIAnalysisProps> = ({ analysis, username, jobRecommendations }) => {
+  const downloadReport = (format: 'markdown' | 'json') => {
+    if (format === 'json') {
+      const dataStr = JSON.stringify({ analysis, jobRecommendations }, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${username || 'github'}_neural_analysis.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
+    const dateStr = new Date().toLocaleDateString();
+    let markdown = `# GitAnalyze Neural Profile Analysis - ${username || 'Profile'}\n`;
+    markdown += `Generated on: ${dateStr}\n\n`;
+    
+    markdown += `## Developer Assessment Summary\n`;
+    markdown += `${analysis.summary}\n\n`;
+    
+    markdown += `## Optimal Trajectory Suggestion\n`;
+    markdown += `${analysis.careerSuggestion}\n\n`;
+    
+    markdown += `## Core Capabilities & Strengths\n`;
+    analysis.strengths.forEach((str) => {
+      markdown += `- ${str}\n`;
+    });
+    markdown += `\n`;
+    
+    markdown += `## Vulnerabilities & Areas of Improvement\n`;
+    analysis.improvements.forEach((imp) => {
+      markdown += `- ${imp}\n`;
+    });
+    markdown += `\n`;
+    
+    if (analysis.bestProject) {
+      markdown += `## Top Repository Showcase: ${analysis.bestProject.name}\n`;
+      markdown += `- **Algorithmic Score:** ${analysis.bestProject.score}\n`;
+      markdown += `- **Project Ownership:** ${analysis.bestProject.isPersonalOrCollaborative}\n`;
+      markdown += `- **Languages Utilized:** ${analysis.bestProject.languagesUsed}\n`;
+      markdown += `- **Production Readiness:** ${analysis.bestProject.isProductionReady}\n`;
+      markdown += `- **Problem Addressed:** ${analysis.bestProject.problemSolved}\n`;
+      markdown += `- **Selection Rationale:** ${analysis.bestProject.whyBest}\n\n`;
+    }
+    
+    markdown += `## AI Transmission Node\n`;
+    markdown += `> "${analysis.motivation}"\n\n`;
+
+    if (jobRecommendations && jobRecommendations.length > 0) {
+      markdown += `## Targeted Job Match Recommendations\n\n`;
+      jobRecommendations.forEach((job, idx) => {
+        markdown += `### ${idx + 1}. ${job.role}\n`;
+        markdown += `- **Ideal Company/Industry:** ${job.companyType}\n`;
+        markdown += `- **Match Score:** ${job.matchPercentage}%\n`;
+        markdown += `- **Match Justification:** ${job.whyYouMatch}\n`;
+        markdown += `- **Demonstrated Skills:** ${job.keySkills.join(', ')}\n\n`;
+      });
+    }
+    
+    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${username || 'github'}_neural_analysis_report.md`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="w-full my-8 relative z-10 animate-fade-in">
       
-      {/* Dossier Header */}
-      <h3 className="text-2xl font-rajdhani font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
-        <svg className="w-6 h-6 text-cyber-neon animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-        </svg>
-        Gemini Neural Profile Analysis
-      </h3>
+      {/* Dossier Header with Export Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 text-left">
+        <h3 className="text-2xl font-rajdhani font-bold text-white uppercase tracking-wider flex items-center gap-2">
+          <svg className="w-6 h-6 text-cyber-neon animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+          Gemini Neural Profile Analysis
+        </h3>
+        
+        <div className="flex items-center gap-3 no-print">
+          <button
+            onClick={() => downloadReport('markdown')}
+            className="px-4 py-2 font-rajdhani text-sm font-bold uppercase tracking-wider text-black bg-cyber-neon rounded-md cursor-pointer hover:shadow-[0_0_15px_rgba(0,255,136,0.6)] hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2"
+          >
+            <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export Markdown
+          </button>
+          
+          <button
+            onClick={() => downloadReport('json')}
+            className="px-4 py-2 font-rajdhani text-sm font-bold uppercase tracking-wider text-white border border-cyber-purple bg-cyber-purple/10 rounded-md cursor-pointer hover:bg-cyber-purple hover:text-black hover:shadow-[0_0_15px_rgba(123,47,255,0.6)] hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export JSON
+          </button>
+
+          <button
+            onClick={() => window.print()}
+            className="px-4 py-2 font-rajdhani text-sm font-bold uppercase tracking-wider text-white border border-cyber-pink bg-cyber-pink/10 rounded-md cursor-pointer hover:bg-cyber-pink hover:text-black hover:shadow-[0_0_15px_rgba(255,0,127,0.6)] hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Export PDF (Page)
+          </button>
+        </div>
+      </div>
 
       {/* Main Analysis Holographic Card */}
       <div className="glass-card rounded-xl border-2 animate-border-glow p-6 md:p-8 relative overflow-hidden">

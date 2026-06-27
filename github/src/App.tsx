@@ -39,7 +39,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   
   // UI states
-  const [shareCopied, setShareCopied] = useState(false);
+  // const [shareCopied, setShareCopied] = useState(false);
   const [particles, setParticles] = useState<Particle[]>([]);
 
   // Effect 1: Generate star particles on component mount for the background animation
@@ -134,16 +134,16 @@ function App() {
    * Share Button Handler.
    * Copies the current shareable profile link to the user's clipboard.
    */
-  const handleShare = () => {
-    if (!githubData) return;
-    const shareUrl = `${window.location.origin}${window.location.pathname}?u=${encodeURIComponent(
-      githubData.profile.login
-    )}`;
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2000);
-    });
-  };
+  // const handleShare = () => {
+  //   if (!githubData) return;
+  //   const shareUrl = `${window.location.origin}${window.location.pathname}?u=${encodeURIComponent(
+  //     githubData.profile.login
+  //   )}`;
+  //   navigator.clipboard.writeText(shareUrl).then(() => {
+  //     setShareCopied(true);
+  //     setTimeout(() => setShareCopied(false), 2000);
+  //   });
+  // };
 
   // Find the top-scored original repository
   const topRepo = githubData?.repos
@@ -244,7 +244,11 @@ function App() {
 
             {/* 4. AI Recruiter Dossier Panel */}
             {aiAnalysis ? (
-              <AIAnalysis analysis={aiAnalysis} />
+              <AIAnalysis 
+                analysis={aiAnalysis} 
+                username={githubData.profile.login}
+                jobRecommendations={jobRecommendations}
+              />
             ) : (
               <div className="glass-card border-2 border-cyber-purple/20 p-6 md:p-8 rounded-xl flex flex-col gap-4 animate-pulse">
                 <div className="h-6 bg-white/15 w-64 rounded"></div>
@@ -265,7 +269,7 @@ function App() {
             {aiAnalysis && (
               <div className="w-full my-8 relative z-10 animate-fade-in text-left">
                 {!jobRecommendations && !isJobsLoading && (
-                  <div className="glass-card rounded-xl border border-dashed border-cyber-purple/40 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden group hover:border-cyber-purple/80 hover:shadow-[0_0_20px_rgba(123,47,255,0.1)] transition-all duration-300">
+                  <div className="glass-card rounded-xl border border-dashed border-cyber-purple/40 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden group hover:border-cyber-purple/80 hover:shadow-[0_0_20px_rgba(123,47,255,0.1)] transition-all duration-300 no-print">
                     <div className="flex-1">
                       <h3 className="text-xl font-rajdhani font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
                         <svg className="w-5 h-5 text-cyber-purple animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -322,19 +326,6 @@ function App() {
 
             {/* 6. Repository List Showcase */}
             <RepoCards repos={githubData.repos} />
-
-            {/* 7. Share Dossier Action Bar */}
-            <section className="flex flex-col items-center justify-center py-8">
-              <button
-                onClick={handleShare}
-                className="relative px-8 py-4 font-rajdhani text-xl font-bold uppercase tracking-wider text-black bg-gradient-to-r from-cyber-neon to-cyber-purple rounded-md cursor-pointer hover:shadow-[0_0_25px_rgba(0,255,136,0.6)] active:scale-95 transition-all duration-300 flex items-center gap-3"
-              >
-                <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 10.742l4.887-2.443m0 0a3.46 3.46 0 11.263-1.61l-4.887 2.443m1.887-.764a3.46 3.46 0 11-1.071-1.916m0 0a3.46 3.46 0 01-1.07 1.916M19.336 17a3.46 3.46 0 11-3.46-3.46A3.46 3.46 0 0119.336 17z" />
-                </svg>
-                {shareCopied ? 'Link Copied to Clipboard!' : 'Share Neural Analysis'}
-              </button>
-            </section>
 
           </main>
         )}

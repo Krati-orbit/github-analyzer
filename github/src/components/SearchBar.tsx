@@ -62,7 +62,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isLoading }) => 
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 py-8 relative z-10 animate-fade-in">
+    <div className="w-full max-w-2xl mx-auto px-4 py-8 relative z-10 animate-fade-in no-print">
       <form onSubmit={handleSubmit} className="relative flex items-center">
         {/* Glow backdrop effect */}
         <div className="absolute -inset-1.5 bg-gradient-to-r from-cyber-neon to-cyber-purple rounded-lg blur opacity-30 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>

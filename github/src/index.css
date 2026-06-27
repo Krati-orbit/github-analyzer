@@ -171,3 +171,33 @@ body {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* Custom print styles to enable high-fidelity PDF/Page exports */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background-color: #0a0a0a !important;
+    background-image: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color: #e5e7eb !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .glass-card {
+    background: rgba(18, 18, 18, 0.95) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+
+  /* Force background graphics on print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
