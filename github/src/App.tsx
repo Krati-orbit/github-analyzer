@@ -7,7 +7,8 @@ import { RepoCards } from './components/RepoCards';
 import { AIAnalysis } from './components/AIAnalysis';
 import { JobRecommendations } from './components/JobRecommendations';
 import { fetchGitHubData } from './utils/githubApi';
-import type { GitHubData } from './utils/githubApi';
+import type { GitHubData, GitHubRepo } from './utils/githubApi';
+import { ScoreAuditDrawer } from './components/ScoreAuditDrawer';
 import { analyzeProfileWithGemini, recommendJobsWithGemini } from './utils/geminiApi';
 import type { AIAnalysisResult, JobRecommendation } from './utils/geminiApi';
 
@@ -41,6 +42,7 @@ function App() {
   // UI states
   // const [shareCopied, setShareCopied] = useState(false);
   const [particles, setParticles] = useState<Particle[]>([]);
+  const [activeAuditRepo, setActiveAuditRepo] = useState<GitHubRepo | null>(null);
 
   // Effect 1: Generate star particles on component mount for the background animation
   useEffect(() => {
@@ -78,6 +80,7 @@ function App() {
     setAiAnalysis(null);
     setJobRecommendations(null);
     setJobsError(null);
+    setActiveAuditRepo(null);
 
     // Update URL query parameters so the current profile search state is shareable
     const newUrl = `${window.location.origin}${window.location.pathname}?u=${encodeURIComponent(username)}`;
@@ -127,6 +130,21 @@ function App() {
       setJobsError(err.message || 'An unexpected error occurred while recommending jobs.');
     } finally {
       setIsJobsLoading(false);
+    }
+  };
+
+  /**
+   * Telemetry Audit Drawer Handlers
+   */
+  const handleOpenAudit = (repo: GitHubRepo) => {
+    setActiveAuditRepo(repo);
+  };
+
+  const handleOpenAuditByName = (repoName: string) => {
+    if (!githubData) return;
+    const foundRepo = githubData.repos.find(r => r.name === repoName);
+    if (foundRepo) {
+      setActiveAuditRepo(foundRepo);
     }
   };
 
@@ -248,6 +266,7 @@ function App() {
                 analysis={aiAnalysis} 
                 username={githubData.profile.login}
                 jobRecommendations={jobRecommendations}
+                onOpenAuditByName={handleOpenAuditByName}
               />
             ) : (
               <div className="glass-card border-2 border-cyber-purple/20 p-6 md:p-8 rounded-xl flex flex-col gap-4 animate-pulse">
@@ -325,12 +344,15 @@ function App() {
             )}
 
             {/* 6. Repository List Showcase */}
-            <RepoCards repos={githubData.repos} />
+            <RepoCards repos={githubData.repos} onOpenAudit={handleOpenAudit} />
 
           </main>
         )}
 
       </div>
+
+      {/* 7. Algorithmic Score Audit Drawer */}
+      <ScoreAuditDrawer repo={activeAuditRepo} onClose={() => setActiveAuditRepo(null)} />
     </div>
   );
 }

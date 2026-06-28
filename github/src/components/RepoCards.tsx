@@ -3,9 +3,10 @@ import type { GitHubRepo } from '../utils/githubApi';
 
 interface RepoCardsProps {
   repos: GitHubRepo[];
+  onOpenAudit: (repo: GitHubRepo) => void;
 }
 
-export const RepoCards: React.FC<RepoCardsProps> = ({ repos }) => {
+export const RepoCards: React.FC<RepoCardsProps> = ({ repos, onOpenAudit }) => {
   if (!repos || repos.length === 0) {
     return (
       <div className="text-center py-8 text-white/40">
@@ -100,6 +101,17 @@ export const RepoCards: React.FC<RepoCardsProps> = ({ repos }) => {
               </div>
 
             </div>
+
+            {/* Telemetry Audit Action */}
+            <button
+              onClick={() => onOpenAudit(repo)}
+              className="mt-4 w-full py-2 font-rajdhani text-xs font-bold uppercase tracking-wider text-white border border-cyber-neon/20 bg-cyber-neon/5 hover:bg-cyber-neon hover:text-black hover:shadow-[0_0_12px_rgba(0,255,136,0.3)] hover:border-cyber-neon rounded transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+              </svg>
+              Telemetry Audit
+            </button>
 
           </div>
         ))}

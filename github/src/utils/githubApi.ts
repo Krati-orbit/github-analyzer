@@ -226,7 +226,7 @@ export async function fetchGitHubData(username: string): Promise<GitHubData> {
             .replace(/\[!\[.+?\]\(.+?\)\]\(.+?\)/g, '')
             .replace(/!\[.+?\]\(.+?\)/g, '')
             .replace(/\[(.+?)\]\(.+?\)/g, '$1')
-            .replace(/[*_`#\-]/g, ' ')
+            .replace(/[*_`#-]/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
           bestRepoReadme = cleanText.substring(0, 1500); // Limit to 1500 chars to fit prompt size
@@ -326,7 +326,7 @@ async function checkReadmeExists(owner: string, repo: string, headers: Record<st
   try {
     const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/readme`, { method: 'HEAD', headers });
     return res.ok;
-  } catch (err) {
+  } catch {
     return false;
   }
 }
@@ -345,39 +345,95 @@ async function checkReadmeExists(owner: string, repo: string, headers: Record<st
  * - Topics/Tags: 2 pts per tag
  * - Watchers count: 1 pt per watcher
  */
-export function scoreProject(repo: GitHubRepo): number {
-  let score = 0;
+/**
+ * Detailed breakdown of a repository's quality score components.
+ */
+export interface ScoreBreakdown {
+  starsValue: number;
+  starsPoints: number;
+  forksValue: number;
+  forksPoints: number;
+  visibilityValue: string;
+  visibilityPoints: number;
+  readmeValue: boolean;
+  readmePoints: number;
+  languageValue: string | null;
+  languagePoints: number;
+  recentUpdateDays: number;
+  recentUpdatePoints: number;
+  descriptionValue: string | null;
+  descriptionPoints: number;
+  topicsCount: number;
+  topicsPoints: number;
+  watchersValue: number;
+  watchersPoints: number;
+  totalScore: number;
+}
 
-  // Stars & Forks
-  score += (repo.stargazers_count || 0) * 3;
-  score += (repo.forks_count || 0) * 2;
+/**
+ * Performs detailed calculation of quality score metrics for a given repository.
+ */
+export function calculateScoreBreakdown(repo: GitHubRepo): ScoreBreakdown {
+  const starsValue = repo.stargazers_count || 0;
+  const starsPoints = starsValue * 3;
 
-  // Public visibility
-  score += repo.private ? 0 : 5;
+  const forksValue = repo.forks_count || 0;
+  const forksPoints = forksValue * 2;
 
-  // README file existence
-  score += repo.has_readme ? 10 : 0;
+  const visibilityValue = repo.private ? 'Private' : 'Public';
+  const visibilityPoints = repo.private ? 0 : 5;
 
-  // Primary language configured
-  score += repo.language ? 5 : 0;
+  const readmeValue = repo.has_readme;
+  const readmePoints = readmeValue ? 10 : 0;
 
-  // Recent update bonus (active projects get higher rating)
+  const languageValue = repo.language;
+  const languagePoints = languageValue ? 5 : 0;
+
   const lastUpdate = new Date(repo.updated_at);
-  const daysSince = (Date.now() - lastUpdate.getTime()) / 86400000;
-  score += daysSince < 30 ? 10 :    // Last month
-           daysSince < 90 ? 5 :     // Last 3 months
-           daysSince < 180 ? 2 : 0; // Last 6 months
+  const daysSince = Math.max(0, (Date.now() - lastUpdate.getTime()) / 86400000);
+  const recentUpdateDays = Math.round(daysSince);
+  const recentUpdatePoints = daysSince < 30 ? 10 :    // Last month
+                             daysSince < 90 ? 5 :     // Last 3 months
+                             daysSince < 180 ? 2 : 0; // Last 6 months
 
-  // Description configured
-  score += repo.description ? 5 : 0;
+  const descriptionValue = repo.description;
+  const descriptionPoints = descriptionValue ? 5 : 0;
 
-  // Topics/Tags defined
-  score += (repo.topics?.length || 0) * 2;
+  const topicsCount = repo.topics?.length || 0;
+  const topicsPoints = topicsCount * 2;
 
-  // Watchers configured
-  score += (repo.watchers_count || 0) * 1;
+  const watchersValue = repo.watchers_count || 0;
+  const watchersPoints = watchersValue * 1;
 
-  return score;
+  const totalScore = starsPoints + forksPoints + visibilityPoints + readmePoints +
+                     languagePoints + recentUpdatePoints + descriptionPoints +
+                     topicsPoints + watchersPoints;
+
+  return {
+    starsValue,
+    starsPoints,
+    forksValue,
+    forksPoints,
+    visibilityValue,
+    visibilityPoints,
+    readmeValue,
+    readmePoints,
+    languageValue,
+    languagePoints,
+    recentUpdateDays,
+    recentUpdatePoints,
+    descriptionValue,
+    descriptionPoints,
+    topicsCount,
+    topicsPoints,
+    watchersValue,
+    watchersPoints,
+    totalScore,
+  };
+}
+
+export function scoreProject(repo: GitHubRepo): number {
+  return calculateScoreBreakdown(repo).totalScore;
 }
 
 /**
@@ -399,7 +455,7 @@ async function fetchReadmeDescription(owner: string, repo: string, headers: Reco
       .replace(/\[!\[.+?\]\(.+?\)\]\(.+?\)/g, '') // remove badge images
       .replace(/!\[.+?\]\(.+?\)/g, '') // remove images
       .replace(/\[(.+?)\]\(.+?\)/g, '$1') // replace links with link text
-      .replace(/[*_`#\-]/g, ' ') // replace markdown symbols with spaces
+      .replace(/[*_`#-]/g, ' ') // replace markdown symbols with spaces
       .replace(/\s+/g, ' ') // collapse multiple whitespaces
       .trim();
       

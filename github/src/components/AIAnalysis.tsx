@@ -5,9 +5,15 @@ interface AIAnalysisProps {
   analysis: AIAnalysisResult;
   username?: string;
   jobRecommendations?: JobRecommendation[] | null;
+  onOpenAuditByName: (repoName: string) => void;
 }
 
-export const AIAnalysis: React.FC<AIAnalysisProps> = ({ analysis, username, jobRecommendations }) => {
+export const AIAnalysis: React.FC<AIAnalysisProps> = ({ 
+  analysis, 
+  username, 
+  jobRecommendations,
+  onOpenAuditByName
+}) => {
   const downloadReport = (format: 'markdown' | 'json') => {
     if (format === 'json') {
       const dataStr = JSON.stringify({ analysis, jobRecommendations }, null, 2);
@@ -182,8 +188,17 @@ export const AIAnalysis: React.FC<AIAnalysisProps> = ({ analysis, username, jobR
                     </div>
                     <div>
                       <span className="text-[10px] text-cyber-neon/60 font-mono uppercase tracking-widest block font-bold">Algorithmic Best Project Showcase</span>
-                      <h4 className="text-xl font-rajdhani font-bold text-white select-all">
+                      <h4 className="text-xl font-rajdhani font-bold text-white select-all flex items-center gap-1.5">
                         {analysis.bestProject.name}
+                        <button
+                          onClick={() => onOpenAuditByName(analysis.bestProject.name)}
+                          className="p-1 text-cyber-neon/60 hover:text-cyber-neon hover:bg-cyber-neon/10 rounded transition-all cursor-pointer no-print"
+                          title="Open Telemetry Score Audit"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+                          </svg>
+                        </button>
                       </h4>
                     </div>
                   </div>
