@@ -9,6 +9,7 @@ import { JobRecommendations } from './components/JobRecommendations';
 import { fetchGitHubData } from './utils/githubApi';
 import type { GitHubData, GitHubRepo } from './utils/githubApi';
 import { ScoreAuditDrawer } from './components/ScoreAuditDrawer';
+import { CreatorDossierDrawer } from './components/CreatorDossierDrawer';
 import { analyzeProfileWithGemini, recommendJobsWithGemini } from './utils/geminiApi';
 import type { AIAnalysisResult, JobRecommendation } from './utils/geminiApi';
 
@@ -43,6 +44,7 @@ function App() {
   // const [shareCopied, setShareCopied] = useState(false);
   const [particles, setParticles] = useState<Particle[]>([]);
   const [activeAuditRepo, setActiveAuditRepo] = useState<GitHubRepo | null>(null);
+  const [isDossierOpen, setIsDossierOpen] = useState(false);
 
   // Effect 1: Generate star particles on component mount for the background animation
   useEffect(() => {
@@ -65,8 +67,14 @@ function App() {
     const sharedUsername = params.get('u');
     if (sharedUsername) {
       handleSearch(sharedUsername);
+    } else {
+      const defaultUser = import.meta.env.VITE_DEFAULT_GITHUB_USER;
+      if (defaultUser && defaultUser.trim() !== '') {
+        handleSearch(defaultUser.trim());
+      }
     }
   }, []);
+
 
   /**
    * Search Orchestrator.
@@ -168,6 +176,8 @@ function App() {
     ? [...githubData.repos].sort((a, b) => b.stars - a.stars)[0] || null
     : null;
 
+  const defaultUser = import.meta.env.VITE_DEFAULT_GITHUB_USER;
+
   return (
     <div className="min-height-screen relative z-10 scanlines overflow-hidden pb-16">
       
@@ -188,6 +198,19 @@ function App() {
         ))}
       </div>
 
+      {/* Top action bar */}
+      <div className="absolute top-4 right-4 z-20 flex gap-3 no-print">
+        <button
+          onClick={() => setIsDossierOpen(true)}
+          className="px-4 py-2 font-rajdhani text-sm font-bold uppercase tracking-wider text-cyber-purple border border-cyber-purple/40 bg-cyber-purple/5 hover:bg-cyber-purple hover:text-black hover:shadow-[0_0_15px_rgba(123,47,255,0.5)] rounded-md cursor-pointer transition-all duration-300 flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          Creator Dossier
+        </button>
+      </div>
+
       <div className="max-w-6xl mx-auto px-4 md:px-6 relative z-10">
         
         {/* Dashboard Header */}
@@ -200,6 +223,18 @@ function App() {
           </p>
           
           <SearchBar onSearch={handleSearch} isLoading={isLoading} />
+          
+          {defaultUser && (
+            <p className="text-xs font-mono text-white/40 -mt-4 mb-4 no-print animate-fade-in">
+              Or quick-scan portfolio creator:{' '}
+              <button
+                onClick={() => handleSearch(defaultUser)}
+                className="text-cyber-neon hover:text-white font-bold hover:underline bg-transparent border-none cursor-pointer focus:outline-none transition-colors"
+              >
+                @{defaultUser}
+              </button>
+            </p>
+          )}
         </header>
 
         {/* Error message card */}
@@ -353,9 +388,13 @@ function App() {
 
       {/* 7. Algorithmic Score Audit Drawer */}
       <ScoreAuditDrawer repo={activeAuditRepo} onClose={() => setActiveAuditRepo(null)} />
+
+      {/* 8. Creator Dossier Info Drawer */}
+      <CreatorDossierDrawer isOpen={isDossierOpen} onClose={() => setIsDossierOpen(false)} onScanProfile={handleSearch} />
     </div>
   );
 }
 
 export default App;
+
 
